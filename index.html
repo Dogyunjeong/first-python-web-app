@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>KIWI Assignment</title>
+</head>
+
+<body>
+    <div class="row">
+        <button id='btn1'>View 1</button>
+        <button id='btn2'>View 2</button>
+    </div>
+    <div id="container">
+    </div>
+</body>
+    
+<script>
+    const get = 'GET'
+    const serverUrl = 'http://localhost:8000'
+    const container = document.querySelector('#container')
+    const table = document.createElement('table')
+
+    const createAjax = function(method, path, callback) {
+        const xhr = new XMLHttpRequest()
+        const url = serverUrl + path
+        const parser = new DOMParser()
+        
+        if ("withCredentials" in xhr) {
+            xhr.open(method, url, true);
+        } else if (typeof XDomainRequest != "undefined") {
+            xhr = new XDomainRequest();
+            xhr.open(method, url);
+        }
+        xhr.onreadystatechange = function() {
+            if (this.readyState == xhr.DONE && this.status == 200) {
+                const data = JSON.parse(this.responseText);
+                console.log('xhr response')
+                console.log(data)
+                callback(data);
+            }
+        };
+
+        xhr.send()     
+    }
+
+    const removeAllChild = function (elem) {
+        while (elem.firstChild) {
+            elem.removeChild(elem.firstChild)
+        }
+    }
+
+    
+    const appendPopularDevices = function(payload) {
+        console.log(this)
+        const ul = document.createElement('ul')
+        console.log(ul)
+        payload.device.forEach((device, idx) => {
+            const elem = document.createElement('li')            
+            let content
+            if  (payload.change[idx] != 'none') {
+                content = device + ' ( ' + payload.change[idx] + '% )'
+            } else {
+                content = device + ' ( ' + payload.change[idx] + ' )'
+            }
+            elem.innerHTML = content
+            ul.appendChild(elem)
+        })
+        this.appendChild(ul)
+    }
+   
+    const dayClickEventListener = function (event) {
+        event.stopPropagation()
+        if (this.clicked) {
+            console.log('working 2')
+            this.clicked = false
+            return this.removeChild(this.lastChild)
+        }
+        this.clicked = true
+        const target = event.target
+        console.log(target)
+        const dayStr = target.innerHTML
+        const listener = this
+        
+        createAjax(get, '/popular?time=' + dayStr, appendPopularDevices.bind(listener))
+    }
+
+    const appendDays = function(days) {
+        days.forEach((day) => {
+            const elem = document.createElement('div')
+            elem.className += 'row'
+            elem.innerHTML = day
+            elem.addEventListener('click', dayClickEventListener)
+            container.appendChild(elem)
+        })
+    }
+       
+    const appendRecent = async function (recent) {
+        await removeAllChild(table)
+        Object.keys(recent).forEach((day) => {
+            const tr = document.createElement('tr')
+            const th1 = document.createElement('th')
+            const th2 = document.createElement('th')
+            th1.innerHTML = day
+            th2.innerHTML = this.deviceType + '(' + this.conn + '): ' + recent[day][this.deviceType]
+            tr.appendChild(th1)
+            tr.appendChild(th2)
+            table.appendChild(tr)
+        })
+        container.appendChild(table)
+    }
+
+    const getTotalDevices = function() {
+        const typeSelect = document.querySelector('#type-select')
+        const connSelect = document.querySelector('#conn-select')
+        this.deviceType = typeSelect.options[typeSelect.selectedIndex].value
+        this.conn = connSelect.options[connSelect.selectedIndex].value
+        const path = '/recent?type=' + this.deviceType + '&connection=' + this.conn
+        createAjax(get, path, appendRecent.bind(this))
+    }
+    const appendSelect = function(payload) {
+        const typeSelect = document.createElement('select')
+        const connSelect = document.createElement('select')
+        const btn = document.createElement('button')
+        typeSelect.id += 'type-select'
+        connSelect.id += 'conn-select'
+        btn.id += 'select-button'
+        btn.innerHTML = 'Show'
+        payload.type.forEach((type) => {
+            const option = document.createElement('option')
+            option.value = type
+            option.innerHTML = type
+            typeSelect.appendChild(option)
+        })
+        payload.connection.forEach((conn) => {
+            const option = document.createElement('option')
+            option.value = conn
+            option.innerHTML = conn
+            connSelect.appendChild(option)
+        })
+        btn.addEventListener('click', getTotalDevices)
+        container.appendChild(typeSelect)
+        container.appendChild(connSelect)
+        container.appendChild(btn)
+    }
+
+    const onView1 = async function (event) {
+        await removeAllChild(container)
+        createAjax(get, '/dayinfo', appendDays)
+    }
+
+    const onView2 = async function (evnet) {
+        await removeAllChild(container)
+        createAjax(get, '/selects', appendSelect)
+    }
+
+    onView1()
+    document.getElementById("btn1").addEventListener("click", onView1, false);
+    document.getElementById("btn2").addEventListener("click", onView2, false);
+    
+</script>
+
+</html>
+
